@@ -1,0 +1,537 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Login - G.V's Exam Protocol{% endblock %}
+
+{% block extra_css %}
+<style>
+    #particle-canvas {
+        display: none;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+        height: 100vh;
+        overflow: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: #f8fafc;
+    }
+
+    /* Layout Wrapper */
+    .viewport-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        max-width: 1100px;
+        gap: 80px;
+        z-index: 10;
+        padding: 40px;
+        position: relative;
+        /* Fixed: z-index needs position to work */
+    }
+
+    /* Left Side Info */
+    .brand-side {
+        flex: 1;
+        max-width: 500px;
+        display: none;
+        /* Mobile hidden */
+    }
+
+    @media (min-width: 992px) {
+        .brand-side {
+            display: block;
+        }
+    }
+
+    .brand-side h1 {
+        font-weight: 900;
+        font-size: 4rem;
+        line-height: 0.9;
+        margin-bottom: 25px;
+        background: linear-gradient(to bottom right, #fff, #38bdf8);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: textGlow 3s infinite alternate;
+    }
+
+    @keyframes textGlow {
+        from {
+            filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.2));
+        }
+
+        to {
+            filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.5));
+        }
+    }
+
+    .brand-side p {
+        font-size: 1.1rem;
+        color: #94a3b8;
+        margin-bottom: 40px;
+    }
+
+    /* Technical Grid */
+    .tech-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .tech-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 20px;
+        border-radius: 20px;
+        backdrop-filter: blur(5px);
+    }
+
+    .tech-card label {
+        display: block;
+        color: #64748b;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 10px;
+    }
+
+    .tech-card span {
+        font-family: 'Courier New', monospace;
+        color: #38bdf8;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+
+    /* Login Card Side */
+    .login-container {
+        width: 100%;
+        max-width: 440px;
+    }
+
+    .premium-card {
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 36px;
+        padding: 50px 40px;
+        box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 1),
+            inset 0 0 40px rgba(255, 255, 255, 0.02);
+        animation: cardEntrance 1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        position: relative;
+        z-index: 50;
+    }
+
+    @keyframes cardEntrance {
+        from {
+            opacity: 0;
+            transform: translateX(50px) scale(0.95);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+    }
+
+    .logo-glow {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+        border-radius: 22px;
+        margin-bottom: 25px;
+        box-shadow: 0 0 30px rgba(14, 165, 233, 0.4);
+        animation: logoPulse 4s infinite ease-in-out;
+    }
+
+    @keyframes logoPulse {
+
+        0%,
+        100% {
+            transform: scale(1);
+            filter: brightness(1);
+        }
+
+        50% {
+            transform: scale(1.05);
+            filter: brightness(1.2);
+        }
+    }
+
+    .brand-title {
+        font-weight: 800;
+        font-size: 1.8rem;
+        letter-spacing: -1px;
+        margin-bottom: 5px;
+        color: #fff;
+    }
+
+    .brand-subtitle {
+        color: #64748b;
+        font-size: 0.95rem;
+        margin-bottom: 40px;
+    }
+
+    .input-group-custom {
+        position: relative;
+        margin-bottom: 24px;
+    }
+
+    .input-group-custom label {
+        display: block;
+        color: #94a3b8;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-bottom: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .form-control-premium {
+        background: rgba(15, 23, 42, 0.7) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 16px 20px;
+        color: #fff !important;
+        transition: all 0.3s;
+        width: 100%;
+        outline: none;
+        position: relative;
+        z-index: 60;
+    }
+
+    .form-control-premium:focus {
+        border-color: #38bdf8;
+        background: #0f172a !important;
+        box-shadow: 0 0 0 1px #38bdf8;
+    }
+
+    .btn-premium {
+        background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+        border: none;
+        border-radius: 16px;
+        padding: 18px;
+        font-weight: 700;
+        color: #fff;
+        width: 100%;
+        margin-top: 15px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        letter-spacing: 1px;
+        box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.5);
+    }
+
+    .btn-premium:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 20px 35px -5px rgba(14, 165, 233, 0.6);
+        filter: brightness(1.1);
+    }
+
+    .footer-stamp {
+        margin-top: 40px;
+        font-size: 0.75rem;
+        color: #475569;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 2.5px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .footer-stamp span {
+        color: #38bdf8;
+    }
+
+    nav {
+        display: none !important;
+    }
+
+    footer {
+        background: transparent !important;
+        border: none !important;
+        color: rgba(148, 163, 184, 0.3) !important;
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        padding: 20px 0;
+        z-index: 5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="viewport-wrapper">
+    <!-- Brand Side (Left) -->
+    <div class="brand-side">
+        <h1>EXAM<br>SERVER-01</h1>
+        <p>Advanced Integrity Enforcement Protocol</p>
+
+        <div class="tech-grid">
+            <div class="tech-card">
+                <label>Security Level</label>
+                <span>ALPHA-7</span>
+            </div>
+            <div class="tech-card">
+                <label>Traffic Integrity</label>
+                <span id="latency-val">12.4ms</span>
+            </div>
+            <div class="tech-card">
+                <label>Active Nodes</label>
+                <span>DYNAMIC</span>
+            </div>
+            <div class="tech-card">
+                <label>Encryption</label>
+                <span>SHA-256</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Container (Right) -->
+    <div class="login-container">
+        <div class="premium-card text-center">
+            <div class="logo-glow">
+                <img src="{% static 'img/favicon.ico' %}" alt="Logo" width="60" height="60" class="rounded-3">
+            </div>
+
+            <h2 class="brand-title">System Sign-In</h2>
+            <p class="brand-subtitle">G.V's Exam Protocol</p>
+
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-danger py-2 small border-0 rounded-3 text-center" role="alert"
+                    style="background: rgba(220, 53, 69, 0.1); color: #ff6b6b;">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" class="text-start">
+                {% csrf_token %}
+                <div class="input-group-custom">
+                    <label>Registration ID</label>
+                    <input type="text" class="form-control-premium" name="username" placeholder="Enter Registration No."
+                        required autofocus>
+                </div>
+
+                <div class="input-group-custom">
+                    <label>Protocol Key</label>
+                    <div style="position: relative;">
+                        <input type="password" class="form-control-premium" name="password" id="passwordField"
+                            placeholder="••••••••" required>
+                        <i class="bi bi-eye-fill" id="togglePassword"
+                            style="position: absolute; right: 20px; top: 18px; cursor: pointer; color: #94a3b8; z-index: 70;"></i>
+                    </div>
+                </div>
+
+                <script>
+                    const togglePassword = document.querySelector('#togglePassword');
+                    const password = document.querySelector('#passwordField');
+
+                    togglePassword.addEventListener('click', function (e) {
+                        // toggle the type attribute
+                        const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+                        password.setAttribute('type', type);
+                        // toggle the eye slash icon
+                        this.classList.toggle('bi-eye-slash-fill');
+                        this.classList.toggle('bi-eye-fill');
+                    });
+                </script>
+
+                <button type="submit" class="btn btn-premium">
+                    AUTHENTICATE
+                </button>
+            </form>
+
+            <div class="mt-4 pt-2 border-top border-white border-opacity-10">
+                <button type="button" id="btnRequestAccess" class="btn btn-outline-info w-100 rounded-pill py-2 small fw-bold">
+                    <i class="bi bi-person-lock me-2"></i> REQUEST ADMIN APPROVAL (PASSWORDLESS)
+                </button>
+            </div>
+
+            <div class="footer-stamp">
+                <i class="bi bi-broadcast"></i> CHANNEL: <span>SECURE</span>
+            </div>
+        </div>
+
+        <!-- Request Status Card -->
+        <div id="requestStatusCard" class="premium-card text-center mt-4 d-none">
+            <div class="logo-glow">
+                <div id="statusSpinner" class="spinner-border text-white" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div id="statusSuccess" class="d-none text-success">
+                    <i class="bi bi-shield-check fs-1"></i>
+                </div>
+            </div>
+            <h3 id="statusTitle" class="brand-title">Approval Pending</h3>
+            <p class="brand-subtitle">Registration ID: <span id="displayRegId" class="text-white"></span></p>
+            
+            <div id="otpContainer" class="d-none animate-fade-in">
+                <div class="alert alert-success py-2 border-0 rounded-3 small mb-3">
+                    <i class="bi bi-check-circle-fill me-2"></i> Admin has approved! Enter OTP.
+                </div>
+                <div class="input-group mb-3 custom-input-group shadow-sm">
+                    <span class="input-group-text"><i class="bi bi-key-fill"></i></span>
+                    <input type="text" id="otpInput" class="form-control text-center fs-4 fw-bold" placeholder="000000" maxlength="6">
+                </div>
+                <button type="button" id="btnVerifyOTP" class="btn btn-premium w-100">VERIFY & LOGIN</button>
+            </div>
+
+            <div id="waitingMsg" class="alert alert-info py-3 border-0 rounded-3">
+                <i class="bi bi-info-circle-fill me-2"></i> Your request has been sent to the Admin. Please wait for the OTP.
+            </div>
+            <button type="button" id="btnCancelRequest" class="btn btn-sm btn-outline-light opacity-50 mt-3">Cancel Request</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const btnRequestAccess = document.getElementById('btnRequestAccess');
+    const loginForm = document.querySelector('form');
+    const premiumCard = document.querySelector('.premium-card:not(#requestStatusCard)');
+    const requestStatusCard = document.getElementById('requestStatusCard');
+    const displayRegId = document.getElementById('displayRegId');
+    const btnCancelRequest = document.getElementById('btnCancelRequest');
+    
+    const otpContainer = document.getElementById('otpContainer');
+    const waitingMsg = document.getElementById('waitingMsg');
+    const otpInput = document.getElementById('otpInput');
+    const btnVerifyOTP = document.getElementById('btnVerifyOTP');
+    const statusSpinner = document.getElementById('statusSpinner');
+    const statusSuccess = document.getElementById('statusSuccess');
+    const statusTitle = document.getElementById('statusTitle');
+    
+    let pollInterval = null;
+    let currentRequestId = null;
+
+    btnRequestAccess.addEventListener('click', function() {
+        const username = document.querySelector('input[name="username"]').value;
+        if (!username) {
+            alert('Please enter your Registration ID first.');
+            return;
+        }
+
+        if (!confirm('Send a login request to the Admin for ID: ' + username + '?')) return;
+
+        displayRegId.innerText = username;
+        
+        // Disable login form
+        loginForm.classList.add('opacity-50', 'pe-none');
+        btnRequestAccess.disabled = true;
+
+        fetch('{% url "request_passwordless_login" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ username: username })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                currentRequestId = data.request_id;
+                // Show status card
+                premiumCard.classList.add('d-none');
+                requestStatusCard.classList.remove('d-none');
+                
+                // Start polling for approval
+                startPolling(data.request_id);
+            } else {
+                alert(data.message || 'Failed to send request.');
+                btnRequestAccess.disabled = false;
+                loginForm.classList.remove('opacity-50', 'pe-none');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An error occurred. Please try again.');
+            btnRequestAccess.disabled = false;
+        });
+    });
+
+    function startPolling(requestId) {
+        pollInterval = setInterval(() => {
+            fetch(`/check-passwordless-status/${requestId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'APPROVED') {
+                        clearInterval(pollInterval);
+                        // Show OTP entry
+                        statusSpinner.classList.add('d-none');
+                        statusSuccess.classList.remove('d-none');
+                        statusTitle.innerText = "Access Granted";
+                        waitingMsg.classList.add('d-none');
+                        otpContainer.classList.remove('d-none');
+                    } else if (data.status === 'REJECTED') {
+                        clearInterval(pollInterval);
+                        alert('Your login request was rejected by the Admin.');
+                        resetUI();
+                    }
+                });
+        }, 5000); // Poll every 5 seconds
+    }
+
+    btnVerifyOTP.addEventListener('click', function() {
+        const otp = otpInput.value;
+        if (otp.length !== 6) {
+            alert('Please enter the 6-digit OTP.');
+            return;
+        }
+
+        fetch('{% url "verify_passwordless_otp" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ 
+                request_id: currentRequestId,
+                otp: otp 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = data.redirect || '/';
+            } else {
+                alert(data.message || 'Invalid OTP.');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Verification failed.');
+        });
+    });
+
+    function resetUI() {
+        clearInterval(pollInterval);
+        premiumCard.classList.remove('d-none');
+        requestStatusCard.classList.add('d-none');
+        btnRequestAccess.disabled = false;
+        loginForm.classList.remove('opacity-50', 'pe-none');
+    }
+
+    btnCancelRequest.addEventListener('click', resetUI);
+
+    // TECHNICAL STATS ANIMATION
+    setInterval(() => {
+        const latency = document.getElementById('latency-val');
+        if (latency) latency.innerText = (Math.random() * 5 + 8).toFixed(1) + 'ms';
+    }, 5000);
+</script>
+{% endblock %}

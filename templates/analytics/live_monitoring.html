@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Live Proctoring Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2 class="d-flex align-items-center">
+            <span class="spinner-grow spinner-grow-sm text-danger me-2" role="status"></span>
+            Live Proctoring
+        </h2>
+        <p class="text-muted">Monitoring students currently writing exams in real-time.</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <div class="form-check form-switch d-inline-block align-middle me-3">
+            <input class="form-check-input" type="checkbox" id="liveMonitorToggle" checked>
+            <label class="form-check-label small fw-bold" for="liveMonitorToggle">🔄 Auto-Refresh (30s)</label>
+        </div>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row" id="monitoringGrid">
+    {% for attempt in active_attempts %}
+    <div class="col-md-4 mb-4 student-card" data-student="{{ attempt.student.username }}">
+        <div class="card h-100 shadow-sm border-0 border-top border-4 {% if attempt.violation_count > 0 %}border-warning{% else %}border-primary{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h5 class="card-title mb-0">{{ attempt.student.get_full_name|default:attempt.student.username }}</h5>
+                        <code class="small text-muted">{{ attempt.student.username }}</code>
+                    </div>
+                    <span class="badge {% if attempt.violation_count >= attempt.exam.warning_threshold %}bg-danger animate-pulse{% elif attempt.violation_count > 0 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                        {{ attempt.violation_count }} Violations
+                    </span>
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span>Progress: <strong>{{ attempt.answered_count }} / {{ attempt.total_questions }}</strong></span>
+                        <span class="text-primary fw-bold">Score: {{ attempt.current_score|floatformat:1 }}</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        {% widthratio attempt.answered_count attempt.total_questions 100 as progress_percent %}
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" 
+                             style="width: {{ progress_percent }}%"></div>
+                    </div>
+                </div>
+
+                <div class="row g-0 border-top pt-3 mt-3">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Exam</small>
+                        <span class="small fw-bold">{{ attempt.exam.title|truncatechars:20 }}</span>
+                    </div>
+                    <div class="col-6 text-end">
+                        <small class="text-muted d-block">Start Time</small>
+                        <span class="small">{{ attempt.start_time|date:"H:i:s" }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-white border-0 d-grid pb-3">
+                <form action="{% url 'force_submit_attempt' attempt.id %}" method="post" onsubmit="return confirm('Are you sure you want to force submit this exam for this student?')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                        <i class="bi bi-stop-circle"></i> Force Submit
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="card shadow-sm border-0 py-5">
+            <div class="card-body text-center">
+                <div class="display-1 text-muted mb-4"><i class="bi bi-people"></i></div>
+                <h3>No Active Students</h3>
+                <p class="text-muted">There are currently no students writing an exam.</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .animate-pulse {
+        animation: pulse-red 2s infinite;
+    }
+    @keyframes pulse-red {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const liveMonitorToggle = document.getElementById('liveMonitorToggle');
+    
+    // Recovery of toggle state
+    if (localStorage.getItem('adminLiveMonitor') === 'false') {
+        liveMonitorToggle.checked = false;
+    }
+
+    liveMonitorToggle.addEventListener('change', function() {
+        localStorage.setItem('adminLiveMonitor', this.checked);
+    });
+
+    setInterval(function() {
+        if (liveMonitorToggle.checked) {
+            window.location.reload();
+        }
+    }, 5000); // Refresh every 5 seconds
+</script>
+{% endblock %}

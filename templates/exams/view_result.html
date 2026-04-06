@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Result: {{ exam.title }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4 animate-fade-in">
+    <div class="col-12">
+        <h2 class="mb-3">{{ exam.title }} - Result Review</h2>
+        <div class="card hover-lift">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <strong>Student:</strong> {{ attempt.student.username }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Roll No:</strong> {{ attempt.student.studentprofile.roll_number|default:"-" }}
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Score:</strong>
+                        <span class="badge bg-primary fs-6">
+                            {{ attempt.score }} / {{ exam.total_marks }}
+                        </span>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Date:</strong> {{ attempt.submit_time|date:"M d, Y g:i A" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row animate-slide-up" style="animation-delay: 0.2s;">
+    <div class="col-12">
+        {% for ans in student_answers %}
+        <div class="card mb-3 border-{% if ans.marks_awarded > 0 %}success{% else %}danger{% endif %} hover-lift">
+            <div class="card-header bg-white">
+                <strong>Q{{ forloop.counter }}.</strong> {{ ans.question.text }}
+                <span class="float-end badge {% if ans.marks_awarded > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                    {{ ans.marks_awarded }} / {{ ans.question.marks }} Marks
+                </span>
+            </div>
+            <div class="card-body">
+                {% if ans.question.question_type == 'MCQ' %}
+                <ul class="list-group">
+                    {% for opt in ans.question.options.all %}
+                    <li class="list-group-item 
+                            {% if opt.is_correct %}list-group-item-success fw-bold{% endif %}
+                            {% if ans.selected_option == opt and not opt.is_correct %}list-group-item-danger{% endif %}
+                        ">
+                        {{ opt.text }}
+
+                        {% if opt.is_correct %}
+                        <i class="bi bi-check-circle-fill text-success float-end"></i>
+                        {% endif %}
+
+                        {% if ans.selected_option == opt %}
+                        <span class="badge bg-secondary float-end me-2">Your Answer</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if ans.question.explanation %}
+                <div class="mt-3 p-3 bg-light border-start border-4 border-info">
+                    <i class="bi bi-info-circle-fill text-info me-2"></i>
+                    <strong>Explanation:</strong> {{ ans.question.explanation }}
+                </div>
+                {% endif %}
+                {% else %}
+                <p><strong>Your Answer:</strong></p>
+                <pre class="bg-light p-2 border">{{ ans.text_answer }}</pre>
+                <p class="text-muted">Descriptive/Code questions require manual review.</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-12 text-center">
+        <a href="{% url 'student_dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

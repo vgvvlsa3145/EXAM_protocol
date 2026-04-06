@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Attempt Detail: {{ attempt.student.username }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2>
+            <i class="bi bi-person-badge text-primary me-2"></i>
+            {{ attempt.student.get_full_name|default:attempt.student.username }}
+        </h2>
+        <p class="text-muted">
+            Detailed breakdown for exam: <strong>{{ attempt.exam.title }}</strong> 
+            <span class="ms-2 badge {% if attempt.status == 'SUBMITTED' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ attempt.status }}</span>
+        </p>
+    </div>
+    <div class="col-md-4 text-end">
+        <button onclick="window.print()" class="btn btn-outline-dark me-2">
+            <i class="bi bi-printer"></i> Print
+        </button>
+        <a href="{% url 'marks_analysis' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 border-top border-4 border-primary">
+            <div class="card-body text-center">
+                <small class="text-muted text-uppercase fw-bold">Final Score</small>
+                <h3 class="mb-0">{{ attempt.score }} / {{ attempt.exam.total_marks }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 border-top border-4 border-info">
+            <div class="card-body text-center">
+                <small class="text-muted text-uppercase fw-bold">Violations</small>
+                <h3 class="mb-0">{{ attempt.violation_count }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 border-top border-4 border-success">
+            <div class="card-body text-center">
+                <small class="text-muted text-uppercase fw-bold">Submitted</small>
+                <h3 class="mb-0 small">{{ attempt.submit_time|date:"M d, H:i"|default:"Pending" }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 border-top border-4 border-secondary">
+            <div class="card-body text-center">
+                <small class="text-muted text-uppercase fw-bold">IP Address</small>
+                <h3 class="mb-0 small"><code>{{ attempt.ip_address|default:"N/A" }}</code></h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-5">
+    <div class="card-header bg-white fw-bold py-3">
+        <i class="bi bi-list-check me-2"></i> Question-by-Question Audit
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>Question</th>
+                        <th>Student Response</th>
+                        <th style="width: 150px;">Status</th>
+                        <th style="width: 100px;">Marks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ans in answers %}
+                    <tr class="{% if not ans.selected_option and not ans.text_answer %}table-light opacity-50{% endif %}">
+                        <td class="text-center fw-bold">{{ forloop.counter }}</td>
+                        <td>
+                            <div class="fw-bold mb-1">{{ ans.question.text }}</div>
+                            {% if ans.question.question_type == 'MCQ' %}
+                            <div class="small text-muted mt-2">
+                                <strong>Options:</strong>
+                                <ul class="list-unstyled mb-0 ms-2 mt-1">
+                                    {% for opt in ans.question_options %}
+                                    <li class="{% if opt.is_correct %}text-success fw-bold{% endif %}">
+                                        {% if opt.is_correct %}<i class="bi bi-check-circle-fill"></i>{% else %}<i class="bi bi-circle"></i>{% endif %}
+                                        {{ opt.text }}
+                                        {% if ans.selected_option == opt %}
+                                        <span class="badge bg-primary ms-2 small">Selected</span>
+                                        {% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ans.question.question_type == 'MCQ' %}
+                                {% if ans.selected_option %}
+                                    <div class="{% if ans.selected_option.is_correct %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                        {{ ans.selected_option.text }}
+                                    </div>
+                                {% else %}
+                                    <em class="text-muted">Not Answered</em>
+                                {% endif %}
+                            {% else %}
+                                <div class="bg-light p-2 rounded small">
+                                    {{ ans.text_answer|default:"No response provided" }}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if ans.question.question_type == 'MCQ' %}
+                                {% if ans.selected_option %}
+                                    {% if ans.selected_option.is_correct %}
+                                        <span class="badge bg-success-soft text-success px-3 py-2 rounded-pill">
+                                            <i class="bi bi-check-circle me-1"></i> Correct
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger-soft text-danger px-3 py-2 rounded-pill">
+                                            <i class="bi bi-x-circle me-1"></i> Incorrect
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge bg-secondary-soft text-secondary px-3 py-2 rounded-pill">Skipped</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="badge bg-info-soft text-info px-3 py-2 rounded-pill">Subjective</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold text-center">
+                            {{ ans.marks_awarded }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            No answers found for this attempt.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-success-soft { background-color: rgba(25, 135, 84, 0.1); }
+    .bg-danger-soft { background-color: rgba(220, 53, 69, 0.1); }
+    .bg-info-soft { background-color: rgba(13, 202, 240, 0.1); }
+    .bg-secondary-soft { background-color: rgba(108, 117, 125, 0.1); }
+    
+    @media print {
+        .btn, .badge-soft { display: none !important; }
+        .card { border: 1px solid #ddd !important; box-shadow: none !important; }
+    }
+</style>
+{% endblock %}

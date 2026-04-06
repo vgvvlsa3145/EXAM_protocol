@@ -1,0 +1,458 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Marks Analysis{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2>Marks Analysis Dashboard</h2>
+        <p class="text-muted">In-depth performance metrics and score distributions.</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <form method="get" class="d-inline-flex gap-2">
+            <select name="exam_id" class="form-select w-auto">
+                <option value="">All Exams Combined</option>
+                {% for exam in exams %}
+                <option value="{{ exam.id }}" {% if exam.id|stringformat:"s" == exam_id %}selected{% endif %}>
+                    {{ exam.title }}
+                </option>
+                {% endfor %}
+            </select>
+            <select name="date" class="form-select w-auto">
+                <option value="">All Dates</option>
+                {% for date in available_dates %}
+                <option value="{{ date|date:'Y-m-d' }}" {% if date|date:'Y-m-d' == selected_date %}selected{% endif %}>
+                    {{ date|date:"M d, Y" }}
+                </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary px-3">Filter</button>
+        </form>
+        <div class="form-check form-switch d-inline-block align-middle me-3">
+            <input class="form-check-switch form-check-input" type="checkbox" id="liveUpdateToggle" checked>
+            <label class="form-check-label small fw-bold" for="liveUpdateToggle">🔄 Live Update</label>
+        </div>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- Overview Row -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-primary h-100 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-primary text-uppercase small fw-bold">Average Score</h6>
+                <h2 class="mb-0">{{ stats.avg_score|default:0|floatformat:2 }}</h2>
+                <small class="text-muted">Out of {{ total_marks_val }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success h-100 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-success text-uppercase small fw-bold">Pass Percentage</h6>
+                <h2 class="mb-0">{{ pass_percentage }}%</h2>
+                <small class="text-muted">{{ pass_count }} / {{ stats.total_count }} Passed</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-info h-100 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-info text-uppercase small fw-bold">Highest Mark</h6>
+                <h2 class="mb-0">{{ stats.max_score|default:0 }}</h2>
+                <small class="text-muted">Top Performer</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-dark h-100 shadow-sm">
+            <div class="card-body text-center">
+                <h6 class="text-muted text-uppercase small fw-bold">Total Submissions</h6>
+                <h2 class="mb-0">{{ stats.total_count }}</h2>
+                <small class="text-muted">Completed Attempts</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white fw-bold d-flex justify-content-between">
+                <span>Performance Trend</span>
+                <span class="badge bg-light text-dark">Date-wise</span>
+            </div>
+            <div class="card-body">
+                <canvas id="dateTrendChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+    {% if not selected_exam %}
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white fw-bold d-flex justify-content-between">
+                <span>Cross-Exam Comparison</span>
+                <span class="badge bg-light text-dark">Average Scores</span>
+            </div>
+            <div class="card-body">
+                <canvas id="examComparisonChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white fw-bold">Score Distribution</div>
+            <div class="card-body">
+                <canvas id="scoreDistributionChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row mb-4">
+    {% if not selected_exam %}
+    <div class="col-md-12">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-header bg-white fw-bold">Score Distribution (Global)</div>
+            <div class="card-body">
+                <canvas id="globalScoreDistributionChart" style="max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0 border-top border-primary border-4">
+            <div class="card-header bg-white fw-bold">
+                <i class="bi bi-calendar-event-fill me-2"></i> Date-wise Submission Breakdown
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 text-center">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Submission Date</th>
+                                <th>Students Count</th>
+                                <th>Average Score</th>
+                                <th>Pass Rate (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for d in date_table %}
+                            <tr>
+                                <td class="fw-bold">{{ d.date|date:"F d, Y" }}</td>
+                                <td class="text-primary fw-bold">{{ d.count }} students</td>
+                                <td>{{ d.avg }}</td>
+                                 <td>
+                                     <div class="d-flex align-items-center justify-content-center">
+                                         <div class="progress w-50 me-2" style="height: 6px;">
+                                             {% widthratio d.pass_rate 1 1 as pass_rate_pct %}
+                                             <div class="progress-bar bg-success" style="width: {{ pass_rate_pct }}%"></div>
+                                         </div>
+                                         <small class="fw-bold">{{ d.pass_rate }}%</small>
+                                     </div>
+                                 </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-muted py-3">No date-wise data available for this selection.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white fw-bold">
+                <i class="bi bi-trophy-fill me-2"></i> Top Performer Rankings
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Rank</th>
+                                <th>Student</th>
+                                <th>Roll Number</th>
+                                <th>Department</th>
+                                <th>Score</th>
+                                <th>Accuracy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for topper in toppers %}
+                            <tr>
+                                <td>
+                                    {% if forloop.counter == 1 %}🥇
+                                    {% elif forloop.counter == 2 %}🥈
+                                    {% elif forloop.counter == 3 %}🥉
+                                    {% else %}{{ forloop.counter }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ topper.student.get_full_name|default:topper.student.username }}</td>
+                                <td><code>{{ topper.student.username }}</code></td>
+                                <td>{{ topper.student.student_profile.department }}</td>
+                                <td class="fw-bold text-primary">{{ topper.score }}</td>
+                                 <td>
+                                     <div class="progress" style="height: 10px;">
+                                         {% widthratio topper.percentage 1 1 as accuracy_pct %}
+                                         <div class="progress-bar bg-primary" role="progressbar"
+                                             style="width: {{ accuracy_pct }}%"></div>
+                                     </div>
+                                     <small class="text-muted">{{ topper.percentage|floatformat:1 }}%</small>
+                                 </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">No submitted attempts yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4 mb-5">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center fw-bold">
+                <span><i class="bi bi-people-fill me-2"></i> Individual Student Performance</span>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="text" id="studentSearch" class="form-control form-control-sm"
+                        placeholder="Search Name/Roll..." onkeyup="filterTable()">
+                    <a href="{% url 'export_analysis_csv' %}{% if selected_exam %}?exam_id={{ selected_exam.id }}{% endif %}"
+                        class="btn btn-sm btn-light text-primary fw-bold">
+                        <i class="bi bi-download me-1"></i> Export CSV
+                    </a>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-hover mb-0" id="resultsTable">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th>Student Name</th>
+                                <th>Roll Number</th>
+                                <th>Exam Title</th>
+                                <th>Score</th>
+                                <th>Accuracy</th>
+                                <th>Time Submitted</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for att in all_attempts %}
+                            <tr>
+                                <td class="student-name">{{ att.student.get_full_name|default:att.student.username }}
+                                </td>
+                                <td class="student-roll"><code>{{ att.student.username }}</code></td>
+                                <td>{{ att.exam.title }}</td>
+                                <td class="fw-bold">
+                                    {{ att.score }} / {{ att.exam.total_marks }}
+                                    <a href="{% url 'student_attempt_detail' att.id %}" class="btn btn-sm btn-outline-primary ms-2 py-0" title="View Detailed Answers">
+                                        <i class="bi bi-search"></i>
+                                    </a>
+                                </td>
+                                 <td>
+                                     <div class="d-flex align-items-center">
+                                         <div class="progress flex-grow-1 me-2" style="height: 6px;">
+                                             {% widthratio att.percentage 1 1 as att_pct %}
+                                             <div class="progress-bar {% if att.is_pass %}bg-success{% else %}bg-danger{% endif %}"
+                                                 role="progressbar" style="width: {{ att_pct }}%"></div>
+                                         </div>
+                                         <small class="fw-bold">{{ att.percentage|floatformat:1 }}%</small>
+                                     </div>
+                                 </td>
+                                <td>{{ att.submit_time|date:"M d, g:i A" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">No submissions found for this
+                                    selection.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ date_labels|json_script:"date-labels-data" }}
+{{ date_avg_scores|json_script:"date-avg-scores-data" }}
+{{ date_counts|json_script:"date-counts-data" }}
+{{ exam_labels|json_script:"exam-labels-data" }}
+{{ exam_avg_scores|json_script:"exam-avg-scores-data" }}
+{{ labels|json_script:"labels-data" }}
+{{ dist_data|json_script:"dist-data" }}
+
+<script src="{% static 'js/chart.js' %}"></script>
+<script>
+    // Helper to get JSON data from script tags
+    function getJsonData(id) {
+        const element = document.getElementById(id);
+        return element ? JSON.parse(element.textContent) : [];
+    }
+
+    const dateLabels = getJsonData('date-labels-data');
+    const dateAvgScores = getJsonData('date-avg-scores-data');
+    const dateCounts = getJsonData('date-counts-data');
+    const examLabels = getJsonData('exam-labels-data');
+    const examAvgScores = getJsonData('exam-avg-scores-data');
+    const labels = getJsonData('labels-data');
+    const distData = getJsonData('dist-data');
+
+    // Performance Trend Chart (Line)
+    new Chart(document.getElementById('dateTrendChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: dateLabels,
+            datasets: [{
+                label: 'Avg Score',
+                data: dateAvgScores,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true
+            }, {
+                label: 'Submissions',
+                data: dateCounts,
+                type: 'bar',
+                backgroundColor: 'rgba(153, 102, 255, 0.4)',
+                yAxisID: 'y1'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'Avg Score' } },
+                y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'No. of Students' } }
+            }
+        }
+    });
+
+    {% if not selected_exam %}
+    // Exam Comparison Chart (Bar)
+    new Chart(document.getElementById('examComparisonChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: examLabels,
+            datasets: [{
+                label: 'Average Score',
+                data: examAvgScores,
+                backgroundColor: 'rgba(255, 159, 64, 0.6)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+    {% endif %}
+
+    {% if not selected_exam %}
+    // Global Score Distribution Chart
+    new Chart(document.getElementById('globalScoreDistributionChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Number of Students',
+                data: distData,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 }
+                }
+            }
+        }
+    });
+    {% else %}
+    new Chart(document.getElementById('scoreDistributionChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Number of Students',
+                data: distData,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0 }
+                }
+            }
+        }
+    });
+    {% endif %}
+
+
+    function filterTable() {
+        const filter = document.getElementById("studentSearch").value.toUpperCase();
+        const tr = document.getElementById("resultsTable").getElementsByTagName("tr");
+        for (let i = 1; i < tr.length; i++) {
+            const nameTd = tr[i].getElementsByClassName("student-name")[0];
+            const rollTd = tr[i].getElementsByClassName("student-roll")[0];
+            const txt = (nameTd ? nameTd.textContent : "") + " " + (rollTd ? rollTd.textContent : "");
+            tr[i].style.display = txt.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+        }
+    }
+
+    // AUTO-REFRESH LOGIC
+    const liveUpdateToggle = document.getElementById('liveUpdateToggle');
+    
+    // Recovery of toggle state from localStorage
+    if (localStorage.getItem('adminLiveUpdate') === 'false') {
+        liveUpdateToggle.checked = false;
+    }
+
+    liveUpdateToggle.addEventListener('change', function() {
+        localStorage.setItem('adminLiveUpdate', this.checked);
+    });
+
+    setInterval(function() {
+        if (liveUpdateToggle.checked) {
+            // Simple page reload for now. 
+            // Ensures all charts and tables are completely fresh with new database state.
+            window.location.reload();
+        }
+    }, 5000); // Check every 5 seconds
+</script>
+{% endblock %}

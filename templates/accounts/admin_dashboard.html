@@ -1,0 +1,760 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-4">
+        <h2 class="mb-0">Admin Dashboard</h2>
+        <p class="text-muted mb-0">System performance overview.</p>
+    </div>
+    <div class="col-md-8 text-end d-flex align-items-center justify-content-end gap-2 text-nowrap">
+        <div class="form-check form-switch me-2 mb-0">
+            <input class="form-check-input" type="checkbox" id="dashboardLiveUpdateToggle" checked>
+            <label class="form-check-label small fw-bold" for="dashboardLiveUpdateToggle">🔄 Live Update</label>
+        </div>
+        <form method="get" action="{% url 'student_detail_view' %}" class="d-flex m-0" style="max-width: 250px;">
+            <div class="input-group">
+                <input type="text" id="student-search-input" name="q" class="form-control form-control-sm"
+                    placeholder="Student Search..." list="student-list" required>
+                <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+            <datalist id="student-list"></datalist>
+        </form>
+        <div class="btn-group btn-group-sm shadow-sm ms-2">
+            <a href="{% url 'live_monitoring' %}" class="btn btn-danger">
+                <i class="bi bi-broadcast me-1"></i> Live Monitor
+            </a>
+            <a href="{% url 'marks_analysis' %}" class="btn btn-primary">
+                <i class="bi bi-graph-up-arrow me-1"></i> Stats
+            </a>
+            <a href="{% url 'admin:index' %}" class="btn btn-dark">
+                <i class="bi bi-gear-fill"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if pending_logins %}
+<div class="row mb-4 animate-fade-in" style="animation-duration: 0.5s;" id="pendingLoginsWrapper">
+    <div class="col-12">
+        <div class="card shadow border-warning">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-person-check-fill me-2"></i> Pending Login Requests
+                </h5>
+                <div class="d-flex align-items-center gap-3">
+                    <a href="{% url 'admin_list_login_requests' %}" class="btn btn-sm btn-dark">Manage All</a>
+                    <span class="badge bg-dark" id="pendingBadge">{{ pending_logins.count }} Waiting</span>
+                </div>
+            </div>
+            <div class="card-body p-0" id="pendingLoginsContainer">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 text-center">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Student</th>
+                                <th>IP Address</th>
+                                <th>OTP (To User)</th>
+                                <th>Info</th>
+                                <th>Requested</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for req in pending_logins %}
+                            <tr>
+                                <td class="fw-bold">{{ req.user.username }}</td>
+                                <td><code>{{ req.ip_address }}</code></td>
+                                <td>
+                                    <span class="badge bg-dark fs-5 letter-spacing-2">{{ req.otp }}</span>
+                                </td>
+                                <td>
+                                    <div class="small fw-bold text-primary">{{ req.platform }}</div>
+                                    <div class="x-small text-muted">{{ req.device_info }}</div>
+                                </td>
+                                <td class="small">{{ req.created_at|timesince }} ago</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="{% url 'admin_approve_request' req.id %}" class="btn btn-sm btn-success">
+                                            <i class="bi bi-check-lg"></i> Approve
+                                        </a>
+                                        <a href="{% url 'reject_login' req.id %}" class="btn btn-sm btn-danger">
+                                            <i class="bi bi-x-lg"></i> Reject
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div id="pendingLoginsWrapper" class="d-none"></div>
+{% endif %}
+
+<div class="row mb-4 animate-fade-in">
+    <div class="col-12">
+        <div class="card shadow-sm hover-lift">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-activity me-2"></i> Live Student Monitor
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'admin_logout_all_students' %}" class="btn btn-sm btn-danger"
+                        onclick="return confirm('⚠️ DANGER: This will instantly logout EVERY online student. Are you sure?')">
+                        <i class="bi bi-person-x-fill"></i> Logout All Students
+                    </a>
+                    <span class="badge bg-light text-dark" id="online-count">Checking...</span>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 250px;">
+                    <table class="table table-striped mb-0 text-center">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Student</th>
+                                <th>Status</th>
+                                <th>Last Seen</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for student in all_users %}
+                            <tr>
+                                <td class="fw-bold">{{ student.username }}</td>
+                                <td id="status-{{ student.id }}" data-last-login="{{ student.last_login|date:'c' }}">
+                                    <!-- JS will update this -->
+                                    <span class="badge bg-secondary">Unknown</span>
+                                </td>
+                                <td>{{ student.last_login|timesince }} ago</td>
+                                <td>
+                                    <a href="{% url 'admin_logout_user' student.id %}"
+                                        class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Are you sure you want to remotely logout {{ student.username }}?')">
+                                        <i class="bi bi-box-arrow-right"></i> Logout
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4 animate-fade-in" style="animation-delay: 0.2s;">
+    <div class="col-md-4">
+        <div class="card text-white bg-primary mb-3 hover-lift">
+            <div class="card-body">
+                <h5 class="card-title">Active Exams</h5>
+                <h1 class="display-4">{{ active_exams }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-success mb-3 hover-lift">
+            <div class="card-body">
+                <h5 class="card-title">Total Students</h5>
+                <h1 class="display-4">{{ total_students }}</h1>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-white bg-info mb-3 hover-lift">
+            <div class="card-body">
+                <h5 class="card-title">Total Attempts</h5>
+                <h1 id="total-attempts-display" class="display-4">{{ total_attempts }}</h1>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Activity -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Recent Exam Attempts</span>
+                <div class="input-group input-group-sm" style="width: 150px;">
+                    <input type="text" id="exam-date-filter" class="form-control" placeholder="Select Date">
+                    <button class="btn btn-outline-secondary" type="button"
+                        onclick="document.getElementById('exam-date-filter')._flatpickr.clear(); window.applyDateFilter('exam-date-filter', 'exam-attempts-container', '.exam-log-item');"
+                        title="Clear Filter">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <ul id="exam-attempts-container" class="list-group list-group-flush"
+                    style="max-height: 400px; overflow-y: auto;">
+                    {% for attempt in recent_attempts %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="exam-log-item" data-date="{{ attempt.start_time|date:'Y-m-d' }}">
+                            <strong>{{ attempt.student.username }}</strong> - {{ attempt.exam.title }}
+                            <br><small class="text-muted">{{ attempt.start_time|date:"M d, g:i A" }}</small>
+                        </div>
+                        <div>
+                            <span class="badge bg-secondary me-2">{{ attempt.score }} Marks</span>
+                            {% if attempt.status != 'SUBMITTED' %}
+                            <a href="{% url 'force_submit_attempt' attempt.id %}"
+                                class="btn btn-sm btn-outline-warning me-1"
+                                onclick="return confirm('Force Submit this exam? Correct answers will be graded.')">
+                                Force Submit
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'reset_attempt' attempt.id %}" class="btn btn-sm btn-outline-danger"
+                                onclick="return confirm('Are you sure you want to RESET this student\'s exam? They will have to start over.')">
+                                Restart
+                            </a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if not recent_attempts %}
+                <div class="p-3 text-muted text-center">No recent attempts.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Logs (Stub for now) -->
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Recent Security Logs</span>
+                <div class="input-group input-group-sm" style="width: 150px;">
+                    <input type="text" id="security-date-filter" class="form-control" placeholder="Select Date">
+                    <button class="btn btn-outline-secondary" type="button"
+                        onclick="document.getElementById('security-date-filter')._flatpickr.clear(); window.applyDateFilter('security-date-filter', 'security-logs-container', '.security-log-item');"
+                        title="Clear Filter">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <ul id="security-logs-container" class="list-group list-group-flush"
+                    style="max-height: 400px; overflow-y: auto;">
+                    {% if recent_logs %}
+                    {% for log in recent_logs %}
+                    <li class="list-group-item security-log-item" data-date="{{ log.timestamp|date:'Y-m-d' }}">
+                        <small class="text-muted float-end">{{ log.timestamp|date:"M d, g:i:s A" }}</small>
+                        <strong>{{ log.action }}</strong>
+                        <div class="small">User: {{ log.user.username }}</div>
+                        <div class="text-muted small fst-italic">{{ log.details }}</div>
+                    </li>
+                    {% endfor %}
+                    {% else %}
+                    <li class="list-group-item text-muted">No security alerts yet.</li>
+                    {% endif %}
+                </ul>
+                <div class="mt-3 text-center">
+                    <a href="{% url 'admin:security_auditlog_changelist' %}"
+                        class="btn btn-sm btn-outline-secondary">View All Logs</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4 mb-5">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-dark">
+                <strong>Manage Exam Results</strong>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Exam Component</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for exam in all_exams %}
+                        <tr>
+                            <td>{{ exam.title }}</td>
+                            <td>
+                                {% if exam.results_published %}
+                                <span class="badge bg-success">Results Published</span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">Results Hidden</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <!-- Toggle Publish -->
+                                <a href="{% url 'publish_results' exam.id %}"
+                                    class="btn btn-sm {% if exam.results_published %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                    {% if exam.results_published %}Unpublish{% else %}Publish Results{% endif %}
+                                </a>
+
+                                <!-- Export CSV -->
+                                <a href="{% url 'export_results_csv' exam.id %}" class="btn btn-sm btn-dark ms-2">
+                                    <i class="bi bi-download"></i> Download CSV
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Performance & Quick Actions -->
+<div class="row mb-4">
+    <!-- Diagnostics -->
+    <div class="col-md-8">
+        <div class="card shadow-sm border-primary h-100">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-cpu-fill me-2"></i> System Diagnostics</h5>
+                <small id="diag-time" class="opacity-75">Loading...</small>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-3">
+                        <h6 class="text-muted small">CPU LOAD</h6>
+                        <div class="progress mb-2" style="height: 10px;">
+                            <div id="cpu-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%">
+                            </div>
+                        </div>
+                        <span id="cpu-text" class="fw-bold">0%</span>
+                    </div>
+                    <div class="col-3 border-start">
+                        <h6 class="text-muted small">RAM USAGE</h6>
+                        <div class="progress mb-2" style="height: 10px;">
+                            <div id="ram-bar" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                        </div>
+                        <span id="ram-text" class="fw-bold">0 GB</span>
+                    </div>
+                    <div class="col-3 border-start">
+                        <h6 class="text-muted small">ACTIVE SESSIONS</h6>
+                        <h3 id="sessions-text" class="mb-0">0</h3>
+                        <small class="text-muted">Concurrent</small>
+                    </div>
+                    <div class="col-3 border-start">
+                        <h6 class="text-muted small">DB LATENCY</h6>
+                        <h3 id="db-latency-text" class="mb-0">0</h3>
+                        <small class="text-muted">ms</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Actions -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-warning h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-shield-shaded me-2"></i> System State</h5>
+            </div>
+            <div class="card-body d-grid gap-2">
+                <a href="{% url 'export_backup' %}" class="btn btn-outline-dark">
+                    <i class="bi bi-cloud-arrow-down-fill me-2"></i> One-Click Backup
+                </a>
+                <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#restoreModal">
+                    <i class="bi bi-cloud-arrow-up-fill me-2"></i> Restore System
+                </button>
+                <div class="hr-text text-muted small text-center my-1">
+                    <hr>
+                </div>
+                <a href="{% url 'admin:security_lab_changelist' %}" class="btn btn-primary">
+                    <i class="bi bi-building-gear me-2"></i> Manage Labs
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Restore Modal -->
+<div class="modal fade" id="restoreModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'restore_backup' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Restore System State</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger">⚠️ <strong>Warning:</strong> Restoring will overwrite the current database
+                        and media files. This action cannot be undone.</p>
+                    <div class="mb-3">
+                        <label class="form-label">Select Backup Zip File</label>
+                        <input type="file" name="backup_file" class="form-control" accept=".zip" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Initiate Restore</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                Quick Actions
+            </div>
+            <div class="card-body">
+                <a href="{% url 'admin:exams_exam_add' %}" class="btn btn-outline-primary me-2">Create New Exam</a>
+                <a href="{% url 'manage_users' %}" class="btn btn-outline-success me-2">Manage Users</a>
+                <a href="{% url 'admin:exams_examannouncement_changelist' %}"
+                    class="btn btn-outline-danger me-2">Broadcast Announcement</a>
+                <a href="{% url 'marks_analysis' %}" class="btn btn-outline-info me-2">Marks Analysis</a>
+                <a href="{% url 'admin:security_allowedip_add' %}" class="btn btn-outline-dark">Whitelist IP</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<!-- Simple Datatables -->
+<link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
+<!-- Local Offline Flatpickr -->
+<link rel="stylesheet" href="{% static 'css/flatpickr.min.css' %}">
+
+<style>
+    /* Highlight dates that have data */
+    .flatpickr-day.has-data {
+        background-color: #bbdefb !important;
+        border-color: #bbdefb !important;
+        font-weight: bold;
+        color: #000;
+    }
+
+    .log-container {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+
+    .no-results-msg {
+        display: none;
+    }
+
+    /* Custom styling for highlighted dates in the calendar */
+    .flatpickr-day.has-data {
+        background-color: #d1e7dd !important;
+        /* Bootstrap success light */
+        border-color: #badbcc !important;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Function to calculate online status
+    function updateOnlineStatus() {
+        const rows = document.querySelectorAll('[id^="status-"]');
+        let onlineCount = 0;
+        const now = new Date();
+
+        rows.forEach(cell => {
+            const lastLoginStr = cell.getAttribute('data-last-login');
+            if (!lastLoginStr) return;
+
+            const lastLogin = new Date(lastLoginStr);
+            const diffSeconds = (now - lastLogin) / 1000;
+
+            // If seen within last 90 seconds, consider Online
+            if (diffSeconds < 90) { // Giving 90s grace period
+                cell.innerHTML = '<span class="badge bg-success pulse-animation">🟢 Online</span>';
+                onlineCount++;
+            } else {
+                cell.innerHTML = '<span class="badge bg-danger">🔴 Offline</span>';
+            }
+        });
+
+        const countBadge = document.getElementById('online-count');
+        if (countBadge) countBadge.innerText = onlineCount + " Online";
+    }
+
+    // Run immediately and every 10 seconds
+    updateOnlineStatus();
+    setInterval(updateOnlineStatus, 10000);
+
+    function updateLogs() {
+        const logContainer = document.getElementById('security-logs-container');
+
+        if (!logContainer) return;
+
+        fetch('{% url "get_live_logs" %}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.logs) {
+                    logContainer.innerHTML = ''; // Clear existing
+                    data.logs.forEach(log => {
+                        const item = document.createElement('li');
+
+                        // Determine color based on action
+                        let msgClass = 'list-group-item-light'; // Default
+                        const action = log.action.toLowerCase();
+                        const details = log.details.toLowerCase();
+
+                        if (action.includes('tab switch') || action.includes('unauthorized') || action.includes('block') || details.includes('fail')) {
+                            msgClass = 'list-group-item-danger'; // Red for unexpected/bad events
+                        } else if (action.includes('reset') || action.includes('delete') || action.includes('export')) {
+                            msgClass = 'list-group-item-warning'; // Yellow for admin actions/warnings
+                        } else if (action.includes('login') || action.includes('submit') || action.includes('start') || action.includes('publish')) {
+                            msgClass = 'list-group-item-success'; // Green for normal positive flow
+                        }
+
+                        item.className = `list-group-item ${msgClass} security-log-item`;
+
+                        // Extract precise YYYY-MM-DD from the backend API directly
+                        const logDateStr = log.date;
+                        item.setAttribute('data-date', logDateStr);
+
+                        item.innerHTML = `
+                            <small class="text-secondary fw-bold float-end">${log.timestamp}</small>
+                            <strong>${log.action}</strong>
+                            <div class="small">User: ${log.user} | IP: ${log.ip}</div>
+                            <div class="text-muted small fst-italic">${log.details}</div>
+                        `;
+                        logContainer.appendChild(item);
+                    });
+                }
+            })
+            .catch(error => console.error('Error fetching logs:', error));
+    }
+
+    function updateDiagnostics() {
+        const cpuBar = document.getElementById('cpu-bar');
+        const cpuText = document.getElementById('cpu-text');
+        const ramBar = document.getElementById('ram-bar');
+        const ramText = document.getElementById('ram-text');
+        const sessionsText = document.getElementById('sessions-text');
+        const dbText = document.getElementById('db-latency-text');
+        const diagTime = document.getElementById('diag-time');
+
+        fetch('{% url "system_diagnostics" %}')
+            .then(response => response.json())
+            .then(data => {
+                cpuBar.style.width = data.cpu + '%';
+                cpuText.innerText = data.cpu + '%';
+
+                // Colorize CPU bar based on load
+                if (data.cpu > 80) cpuBar.className = 'progress-bar bg-danger';
+                else if (data.cpu > 50) cpuBar.className = 'progress-bar bg-warning';
+                else cpuBar.className = 'progress-bar bg-success';
+
+                ramBar.style.width = data.memory_percent + '%';
+                ramText.innerText = data.memory_used_gb + ' GB';
+
+                sessionsText.innerText = data.active_sessions;
+                dbText.innerText = data.db_latency;
+                diagTime.innerText = 'Last Updated: ' + data.timestamp;
+            })
+            .catch(err => console.error('Diagnostics failed', err));
+    }
+
+    // Poll diagnostics every 5 seconds
+    setInterval(updateDiagnostics, 5000);
+    updateDiagnostics();
+
+    function updatePendingLogins() {
+        const wrapper = document.getElementById('pendingLoginsWrapper');
+        if (!wrapper) return;
+
+        fetch(window.location.href)
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newWrapper = doc.getElementById('pendingLoginsWrapper');
+                
+                if (newWrapper) {
+                    // Update content
+                    wrapper.innerHTML = newWrapper.innerHTML;
+                    // Update visibility
+                    if (newWrapper.classList.contains('d-none')) {
+                        wrapper.classList.add('d-none');
+                    } else {
+                        wrapper.classList.remove('d-none');
+                    }
+                }
+            })
+            .catch(err => console.error('Error updating pending logins:', err));
+    }
+
+    // Refresh pending logins every 5 seconds
+    setInterval(updatePendingLogins, 5000);
+
+    // Poll every 3 seconds
+    setInterval(updateLogs, 3000);
+    updateLogs(); // Initial call
+
+    // Student Search Autocomplete
+    const searchInput = document.getElementById('student-search-input');
+    const dataList = document.getElementById('student-list');
+    let debounceTimer;
+
+    if (searchInput && dataList) {
+        searchInput.addEventListener('input', function () {
+            const query = this.value;
+            if (query.length < 2) return;
+
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                fetch(`{% url 'search_students_api' %}?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        dataList.innerHTML = '';
+                        data.results.forEach(item => {
+                            const option = document.createElement('option');
+                            option.value = item.value; // The value put into the input
+                            option.label = item.label; // The displayed text
+                            dataList.appendChild(option);
+                        });
+                    })
+                    .catch(err => console.error('Search API error:', err));
+            }, 300);
+        });
+    }
+</script>
+<script src="{% static 'js/flatpickr.min.js' %}"></script>
+<script>
+    // Initialize data tables
+    document.addEventListener("DOMContentLoaded", function () {
+        if (document.getElementById("examResultsTable")) {
+            new simpleDatatables.DataTable("#examResultsTable", {
+                searchable: true,
+                fixedHeight: false,
+                perPage: 10
+            });
+        }
+    });
+</script>
+<script>
+    // Filtering Logic for Admin Dashboard Activity Logs
+
+    // Explicit global function to be called smoothly without DOM event reliance
+    window.applyDateFilter = function (inputId, containerId, itemClass) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        const selectedDate = input.value;
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const items = container.querySelectorAll(itemClass);
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const li = item.closest('li');
+            if (!selectedDate || item.getAttribute('data-date') === selectedDate) {
+                li.classList.remove('d-none');
+                // Enforce visibility explicitly against Bootstrap
+                if (li.classList.contains('d-flex')) li.style.setProperty('display', 'flex', 'important');
+                else li.style.display = '';
+                visibleCount++;
+            } else {
+                li.style.setProperty('display', 'none', 'important');
+                li.classList.add('d-none');
+            }
+        });
+
+        let noResultBox = container.nextElementSibling;
+        if (!noResultBox || !noResultBox.classList.contains('no-results-msg')) {
+            noResultBox = document.createElement('div');
+            noResultBox.className = 'p-3 text-muted text-center no-results-msg';
+            noResultBox.innerText = 'No records found for this date.';
+            container.parentElement.insertBefore(noResultBox, container.nextSibling);
+        }
+
+        if (visibleCount === 0 && items.length > 0) {
+            noResultBox.style.setProperty('display', 'block', 'important');
+            container.style.display = 'none';
+        } else {
+            noResultBox.style.setProperty('display', 'none', 'important');
+            container.style.display = '';
+        }
+
+        if (inputId === 'exam-date-filter') {
+            const totalDisplay = document.getElementById('total-attempts-display');
+            if (totalDisplay) {
+                totalDisplay.innerText = selectedDate ? visibleCount : '{{ total_attempts }}';
+            }
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Use escapejs + JSON.parse to prevent IDE auto-formatters from breaking the file
+        let availableDates = [];
+        try {
+            availableDates = JSON.parse("{{ available_dates_json|escapejs }}");
+        } catch (e) { console.error("Could not parse available dates"); }
+
+        const flatpickrConfig = {
+            dateFormat: "Y-m-d",
+            allowInput: true,
+            onDayCreate: function (dObj, dStr, fp, dayElem) {
+                try {
+                    const year = dayElem.dateObj.getFullYear();
+                    const month = String(dayElem.dateObj.getMonth() + 1).padStart(2, '0');
+                    const day = String(dayElem.dateObj.getDate()).padStart(2, '0');
+                    const dateStr = `${year}-${month}-${day}`;
+                    if (availableDates.includes(dateStr)) dayElem.className += " has-data";
+                } catch (e) { }
+            }
+        };
+
+        flatpickr("#exam-date-filter", {
+            ...flatpickrConfig,
+            onChange: function () { window.applyDateFilter('exam-date-filter', 'exam-attempts-container', '.exam-log-item'); }
+        });
+
+        flatpickr("#security-date-filter", {
+            ...flatpickrConfig,
+            onChange: function () { window.applyDateFilter('security-date-filter', 'security-logs-container', '.security-log-item'); }
+        });
+
+        // Trigger initial checks
+        window.applyDateFilter('exam-date-filter', 'exam-attempts-container', '.exam-log-item');
+        window.applyDateFilter('security-date-filter', 'security-logs-container', '.security-log-item');
+
+        // Maintain filters automatically if DOM updates (e.g. security logs)
+        setInterval(function () {
+            if (document.getElementById('exam-date-filter').value) window.applyDateFilter('exam-date-filter', 'exam-attempts-container', '.exam-log-item');
+            if (document.getElementById('security-date-filter').value) window.applyDateFilter('security-date-filter', 'security-logs-container', '.security-log-item');
+        }, 3000);
+    });
+</script>
+{% endblock %}

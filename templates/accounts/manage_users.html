@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Users | Exam System{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-6">
+        <h2>Manage Users</h2>
+        <p class="text-muted">Create, edit, and manage student accounts.</p>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{% url 'create_student' %}" class="btn btn-success">
+            <i class="bi bi-person-plus-fill me-1"></i> Add New Student
+        </a>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary ms-2">Back to Dashboard</a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="d-flex">
+                    <input type="text" name="q" class="form-control me-2"
+                        placeholder="Search by Username or Roll Number..." value="{{ query|default:'' }}">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                    {% if query %}
+                    <a href="{% url 'manage_users' %}" class="btn btn-outline-secondary ms-2">Clear</a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                User List
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped mb-0 align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Roll Number</th>
+                                <th>Department</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td class="fw-bold">{{ user.username }}</td>
+                                <td>
+                                    {% if user.role == 'ADMIN' %}
+                                    <span class="badge bg-danger">ADMIN</span>
+                                    {% elif user.role == 'FACULTY' %}
+                                    <span class="badge bg-warning text-dark">FACULTY</span>
+                                    {% else %}
+                                    <span class="badge bg-info text-dark">STUDENT</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.studentprofile.roll_number|default:"-" }}</td>
+                                <td>{{ user.studentprofile.department|default:"-" }}</td>
+                                <td>
+                                    <a href="{% url 'admin_password_reset' user.id %}"
+                                        class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-key-fill"></i> Reset Password
+                                    </a>
+                                    <a href="{% url 'student_detail_view_id' user.id %}"
+                                        class="btn btn-sm btn-outline-secondary ms-1">
+                                        View Profile
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    No users found.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

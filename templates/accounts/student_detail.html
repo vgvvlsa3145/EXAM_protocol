@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}Student Report: {{ student.username }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary mb-3">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Profile Card -->
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white text-center">
+                <i class="bi bi-person-circle display-1"></i>
+                <h2 class="mt-2">{{ student.get_full_name|default:student.username }}</h2>
+                <h5 class="text-white-50">{{ student.username }}</h5>
+                <span class="badge bg-light text-primary">STUDENT</span>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between">
+                        <strong>Roll Number:</strong>
+                        <span>{{ profile.roll_number|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <strong>Department:</strong>
+                        <span>{{ profile.department|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <strong>Year:</strong>
+                        <span>{{ profile.year|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <strong>Last Login:</strong>
+                        <span class="text-muted small">{{ student.last_login }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between">
+                        <strong>Status:</strong>
+                        {% if student.is_active %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-danger">Banned/Inactive</span>
+                        {% endif %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Column -->
+    <div class="col-md-8">
+        <!-- Exam History -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Exam History</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>Exam</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                                <th>Time Taken</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attempt in attempts %}
+                            <tr>
+                                <td>{{ attempt.exam.title }}</td>
+                                <td>
+                                    <strong>{{ attempt.score }}</strong> / {{ attempt.exam.total_marks }}
+                                </td>
+                                <td>
+                                    {% if attempt.status == 'SUBMITTED' %}
+                                    <span class="badge bg-success">Submitted</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">In Progress</span>
+                                    <a href="{% url 'force_submit_attempt' attempt.id %}"
+                                        class="btn btn-sm btn-danger ms-2"
+                                        onclick="return confirm('WARNING: This will close the exam immediately. If the student has not clicked submit, their answers (stored locally) will NOT be graded. Proceed?');">
+                                        <i class="bi bi-stop-circle"></i> Force Submit
+                                    </a>
+                                    {% endif %}
+                                </td>
+                                <td>{{ attempt.start_time|date:"M d, H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No exams attempted yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Logs -->
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="bi bi-shield-exclamation me-2"></i>Security Audit Log</h5>
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                    {% for log in logs %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <strong>{{ log.action }}</strong>
+                            <small class="text-muted">{{ log.timestamp }}</small>
+                        </div>
+                        <div class="small text-muted fst-italic">{{ log.details }}</div>
+                        <div class="small text-secondary">IP: {{ log.ip_address }}</div>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-muted text-center">No security incidents recorded.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Waiting for Approval{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-8 text-center animate-fade-in">
+        <div class="card border-0 shadow-lg p-5 hover-lift">
+            <div class="card-body">
+                <div class="mb-4">
+                    <div class="spinner-border text-primary" style="width: 4rem; height: 4rem;" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+
+                <h1 class="display-5 mb-3">Hello, {{ request.user.first_name|default:request.user.username }}!</h1>
+                <p class="lead text-muted">Your login request has been sent to the Admin.</p>
+
+                <div class="alert alert-info py-4 border-0 shadow-sm mb-4">
+                    <h4 class="alert-heading"><i class="bi bi-clock-history me-2"></i>Waiting for Approval</h4>
+                    <p class="mb-0">Please wait while the administrator verifies your device and approves your access to
+                        the examination portal.</p>
+                </div>
+
+                <div class="d-flex justify-content-center gap-2 mb-4">
+                    <span class="badge bg-secondary">IP: {{ request.META.REMOTE_ADDR }}</span>
+                </div>
+
+                <p class="text-muted small">This page will automatically redirect once you are approved. Do not close
+                    this window.</p>
+
+                <hr class="my-4">
+
+                <a href="{% url 'logout' %}" class="btn btn-outline-danger">
+                    <i class="bi bi-box-arrow-left me-2"></i>Cancel & Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Poll the server every 3 seconds to check for approval
+    function checkApproval() {
+        fetch("{% url 'check_approval_api' %}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'APPROVED') {
+                    window.location.href = "{% url 'student_dashboard' %}";
+                } else if (data.status === 'REJECTED') {
+                    window.location.href = "{% url 'login' %}";
+                }
+            })
+            .catch(error => console.error('Error checking approval:', error));
+    }
+
+    setInterval(checkApproval, 3000);
+</script>
+{% endblock %}

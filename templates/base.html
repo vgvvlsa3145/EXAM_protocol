@@ -1,0 +1,329 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Online Exam System{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="{% static 'img/favicon.ico' %}">
+    <!-- Offline Support: Local Assets -->
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/dancing-script.css' %}" rel="stylesheet">
+    <link href="{% static 'css/bootstrap-icons.css' %}" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .brand-signature {
+            font-family: 'Dancing Script', cursive;
+            font-weight: 700;
+            letter-spacing: 1px;
+            font-size: 1.0rem;
+        }
+
+        /* Removed animations for performance optimization */
+        .animate-fade-in,
+        .animate-slide-up {
+            opacity: 1 !important;
+            transform: none !important;
+            animation: none !important;
+        }
+
+        /* Navbar & Nav-links animation */
+        .nav-link {
+            position: relative;
+            transition: var(--transition-smooth);
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: var(--primary-color);
+            transition: var(--transition-smooth);
+            transform: translateX(-50%);
+        }
+
+        .nav-link:hover::after {
+            width: 80%;
+        }
+
+        .navbar {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(15px);
+            background: rgba(13, 110, 253, 0.95) !important;
+            /* Force solid background for visibility */
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 0;
+        }
+
+        .navbar-dark .nav-link {
+            color: #ffffff !important;
+            font-weight: 600;
+            padding: 10px 18px !important;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+
+        .navbar-dark .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff !important;
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+        }
+
+        .exam-timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #dc3545;
+        }
+
+        /* Sticky Footer */
+        .footer {
+            margin-top: auto;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    <nav
+        class="navbar navbar-expand-lg navbar-dark bg-primary mb-4 shadow-sm border-bottom border-white border-opacity-10">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="{% url 'dashboard' %}">
+                <img src="{% static 'img/favicon.ico' %}" alt="Icon" width="40" height="40" class="me-2 rounded-circle shadow-sm border border-white border-opacity-50">
+                <div class="d-flex flex-column">
+                    <span class="fw-bold tracking-tight">G.V'S <span class="text-primary-emphasis">EXAM PROTOCOL</span></span>
+                    <small style="font-size: 0.65rem; opacity: 0.7; letter-spacing: 1px;">EXAM SYSTEM v5.0</small>
+                </div>
+            </a>
+
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto align-items-center">
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <span id="connection-status"
+                            class="badge rounded-pill bg-white bg-opacity-10 text-white border border-white border-opacity-25 px-3 py-2">
+                            <i class="bi bi-wifi me-1"></i> Checking...
+                        </span>
+                    </li>
+                    {% endif %}
+                </ul>
+
+                <ul class="navbar-nav ms-auto align-items-center">
+                    {% if user.is_authenticated %}
+
+                    {% if user.role == 'ADMIN' or user.role == 'FACULTY' %}
+                    <li class="nav-item dropdown me-2">
+                        <a class="nav-link dropdown-toggle text-white d-flex align-items-center" href="#"
+                            id="adminTools" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-grid-fill me-1"></i> Management
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 rounded-4"
+                            aria-labelledby="adminTools">
+                            <li><a class="dropdown-item py-2" href="{% url 'admin_dashboard' %}">
+                                    <i class="bi bi-speedometer2 me-2 text-primary"></i> Live Dashboard
+                                </a></li>
+                            <li><a class="dropdown-item py-2" href="{% url 'admin:index' %}">
+                                    <i class="bi bi-person-gear me-2 text-primary"></i> Student/User Admin
+                                </a></li>
+                            <li><a class="dropdown-item py-2" href="{% url 'admin:exams_exam_changelist' %}">
+                                    <i class="bi bi-file-earmark-text me-2 text-primary"></i> Manage Exams
+                                </a></li>
+                            <li><a class="dropdown-item py-2" href="{% url 'admin:questions_question_changelist' %}">
+                                    <i class="bi bi-question-circle me-2 text-primary"></i> Question Bank
+                                </a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item py-2" href="{% url 'admin:security_lab_changelist' %}">
+                                    <i class="bi bi-building me-2 text-info"></i> Lab IP Zones
+                                </a></li>
+                            <li><a class="dropdown-item py-2" href="{% url 'export_backup' %}">
+                                    <i class="bi bi-cloud-download me-2 text-success"></i> System Backup
+                                </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-white d-flex align-items-center" href="#"
+                            id="profileLink" role="button" data-bs-toggle="dropdown">
+                            <div class="bg-white bg-opacity-20 rounded-circle p-1 me-2 d-flex align-items-center justify-content-center"
+                                style="width: 32px; height: 32px;">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            {{ user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3"
+                            aria-labelledby="profileLink">
+                            <li><span class="dropdown-item-text text-muted small">Access Level: {{ user.role }}</span>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item text-danger d-flex align-items-center"
+                                    href="{% url 'logout' %}">
+                                    <i class="bi bi-box-arrow-right me-2"></i> Sign Out
+                                </a></li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="btn btn-outline-light rounded-pill px-4" href="{% url 'login' %}">Login</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mb-5">
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Copyright Footer -->
+    <footer class="footer py-3 text-center">
+        <div class="container">
+            <span class="text-muted">
+                © Designed & Copyrights reserved @<span class="brand-signature text-primary">Mr.Gnanna Veera 2026
+                    Offical</span>
+            </span>
+        </div>
+    </footer>
+
+    <!-- Offline Support: Local Scripts -->
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'js/jquery-3.6.0.min.js' %}"></script>
+
+    {{ user.is_authenticated|json_script:"is-authenticated" }}
+    {% if user.is_authenticated %}
+        {{ user.role|json_script:"user-role" }}
+    {% endif %}
+
+    <script>
+        const isAuthenticated = JSON.parse(document.getElementById('is-authenticated').textContent);
+        const userRole = isAuthenticated ? JSON.parse(document.getElementById('user-role').textContent) : null;
+
+        // Heartbeat System (Every 30 seconds)
+        const statusBadge = document.getElementById('connection-status');
+
+        function sendHeartbeat() {
+            fetch("{% url 'heartbeat' %}")
+                .then(response => {
+                    if (response.ok) return response.json();
+                    throw new Error('Offline');
+                })
+                .then(data => {
+                    if (statusBadge) {
+                        statusBadge.className = 'badge bg-success';
+                        statusBadge.innerHTML = '<i class="bi bi-wifi"></i> Connected';
+                    }
+                })
+                .catch(err => {
+                    if (statusBadge) {
+                        statusBadge.className = 'badge bg-danger';
+                        statusBadge.innerHTML = '<i class="bi bi-wifi-off"></i> Offline';
+                    }
+                });
+        }
+
+        if (isAuthenticated) {
+            sendHeartbeat();
+            setInterval(sendHeartbeat, 30000);
+
+            // Announcement Polling for Students
+            if (userRole === 'STUDENT') {
+                let lastAnnouncementId = 0;
+                function checkAnnouncements() {
+                    if (!navigator.onLine) return;
+                    let url = "{% url 'get_active_announcements' %}";
+                    {% if exam %} url += "?exam_id={{ exam.id }}"; {% endif %}
+
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.announcements && data.announcements.length > 0) {
+                                const latest = data.announcements[0];
+                                if (latest.id > lastAnnouncementId) {
+                                    lastAnnouncementId = latest.id;
+                                    showAnnouncement(latest.message, latest.timestamp);
+                                }
+                            }
+                        })
+                        .catch(e => console.log("Announcements poll failed"));
+                }
+                
+                setInterval(checkAnnouncements, 15000);
+                checkAnnouncements();
+            }
+        }
+
+        function showAnnouncement(msg, time) {
+            let popup = document.getElementById('announcement-popup');
+            if (!popup) {
+                popup = document.createElement('div');
+                popup.id = 'announcement-popup';
+                popup.style.cssText = `
+                    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                    background: #fff; padding: 20px; border-radius: 12px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 1100;
+                    min-width: 320px; max-width: 85%; border-left: 6px solid #ffc107;
+                    animation: slideDown 0.5s cubic-bezier(0.175, 0.885, 0.320, 1.275);
+                `;
+                document.body.appendChild(popup);
+            }
+            popup.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong class="text-warning"><i class="bi bi-megaphone-fill me-2"></i> SYSTEM ALERT</strong>
+                    <small class="text-muted">${time}</small>
+                </div>
+                <p class="mb-3 fs-5">${msg}</p>
+                <div class="text-end">
+                    <button class="btn btn-sm btn-dark rounded-pill px-3" onclick="this.closest('#announcement-popup').remove()">Dismiss</button>
+                </div>
+            `;
+        }
+        
+        // CSS for slideDown
+        const style = document.createElement('style');
+        style.innerHTML = "@keyframes slideDown { from { top: -100px; opacity: 0; } to { top: 20px; opacity: 1; } }";
+        document.head.appendChild(style);
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

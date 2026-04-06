@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+{% load exam_extras %}
+
+
+{% block title %}Taking Exam: {{ exam.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .question-card {
+        margin-bottom: 2rem;
+    }
+
+    .timer-sticky {
+        position: sticky;
+        top: 1rem;
+        z-index: 1000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-9">
+        <h2>{{ exam.title }}</h2>
+        <p class="text-muted">{{ exam.subject.name }} | Total Marks: {{ exam.total_marks }}</p>
+    </div>
+    <div class="col-md-3 text-end">
+        <div class="card bg-light timer-sticky">
+            <div class="card-body py-2 text-center">
+                <span class="text-muted small">Time Remaining</span>
+                <div id="timer" class="exam-timer">00:00:00</div>
+
+                <div class="mt-2 d-flex justify-content-between px-2">
+                    <span id="network-badge" class="badge bg-success">Online</span>
+                    <small id="save-status" class="text-muted"
+                        style="opacity:0; transition: opacity 0.5s;">Saved</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form id="examForm" method="post" action="{% url 'submit_exam' exam.id %}">
+    {% csrf_token %}
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            {% for q in questions %}
+            <div class="card question-card">
+                <div class="card-header bg-white">
+                    <span class="float-end badge bg-info">{{ q.marks }} Marks</span>
+                    <div style="white-space: pre-wrap;"><strong>Q{{ forloop.counter }}.</strong> {{ q.text }}<span
+                            style="font-size: 0px; color: transparent; user-select: text; position: absolute; left: -9999px;">
+                            [VKR_EXAM_UNAUTHORIZED_COPY_TRAP_{{ user.username }}] </span></div>
+                </div>
+                <div class="card-body">
+                    {% if q.question_type == 'MCQ' %}
+                    {% for opt in q.shuffled_options %}
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="question_{{ q.id }}" id="opt_{{ opt.id }}"
+                            value="{{ opt.id }}" {% is_selected saved_answers q.id opt.id %}>
+                        <!-- VERSION 60 POWERFIX -->
+                        <label class="form-check-label" for="opt_{{ opt.id }}">
+                            {{ opt.text }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <textarea class="form-control" name="question_{{ q.id }}" rows="5"
+                        placeholder="Type your answer here...">{{ q.user_answer|default:'' }}</textarea>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="row mb-5">
+        <div class="col-md-12 text-center">
+            <button type="submit" class="btn btn-success btn-lg px-5"
+                onclick="return confirm('Are you sure you want to submit?');">Submit Exam</button>
+        </div>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Timer Logic
+    let duration = parseInt("{{ duration_seconds }}");
+    const timerDisplay = document.getElementById('timer');
+    const examId = "{{ exam.id }}";
+    const userId = "{{ user.id }}";
+    const storageKey = `exam_answers_${userId}_${examId}`;
+
+    function saveAnswers() {
+        const formData = new FormData(document.getElementById('examForm'));
+        const answers = {};
+        formData.forEach((value, key) => {
+            answers[key] = value;
+        });
+        localStorage.setItem(storageKey, JSON.stringify(answers));
+
+        fetch("{% url 'autosave_exam' exam.id %}", {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showSaveStatus("Saved to Server");
+                }
+            })
+            .catch(err => {
+                console.log("Autosave failed", err);
+                showSaveStatus("Saved Locally (Offline)");
+            });
+    }
+
+    function loadAnswers() {
+        const saved = localStorage.getItem(storageKey);
+        if (saved) {
+            const answers = JSON.parse(saved);
+            for (const [key, value] of Object.entries(answers)) {
+                const input = document.querySelector(`[name="${key}"]`);
+                if (input) {
+                    if (input.type === 'radio') {
+                        const radio = document.querySelector(`[name="${key}"][value="${value}"]`);
+                        if (radio) radio.checked = true;
+                    } else {
+                        input.value = value;
+                    }
+                }
+            }
+        }
+    }
+
+    document.querySelectorAll('input[type=radio]').forEach(input => {
+        input.addEventListener('change', saveAnswers);
+    });
+
+    document.querySelectorAll('textarea').forEach(input => {
+        input.addEventListener('blur', saveAnswers);
+    });
+
+    setInterval(saveAnswers, 30000);
+    loadAnswers();
+
+    function showSaveStatus(msg) {
+        const statusDiv = document.getElementById('save-status');
+        if (statusDiv) {
+            statusDiv.innerText = msg;
+            statusDiv.style.opacity = 1;
+            setTimeout(() => statusDiv.style.opacity = 0, 2000);
+        }
+    }
+
+    function updateTimer() {
+        if (isNaN(duration)) return;
+
+        const hours = Math.floor(duration / 3600);
+        const minutes = Math.floor((duration % 3600) / 60);
+        const seconds = duration % 60;
+
+        timerDisplay.textContent =
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        if (duration <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('examForm').submit();
+        }
+        duration--;
+    }
+
+    const timerInterval = setInterval(updateTimer, 1000);
+    updateTimer();
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    function updateOnlineStatus() {
+        const status = navigator.onLine ? "Online" : "OFFLINE";
+        const badge = document.getElementById('network-badge');
+        if (badge) {
+            badge.innerText = status;
+            badge.className = navigator.onLine ? "badge bg-success" : "badge bg-danger";
+            if (!navigator.onLine) {
+                alert("âš ï¸ NETWORK LOST! \nDon't worry, your answers are saved on this device. \nPlease check your cable/wifi before submitting.");
+            }
+        }
+    }
+
+    document.getElementById('examForm').addEventListener('submit', function () {
+        isSubmitting = true; // Flag to prevent violation logging
+    });
+
+    function disableCopyPaste(e) {
+        e.preventDefault();
+        return false;
+    }
+
+    document.addEventListener('contextmenu', disableCopyPaste);
+    document.addEventListener('copy', disableCopyPaste);
+    document.addEventListener('cut', disableCopyPaste);
+    document.addEventListener('paste', disableCopyPaste);
+    document.addEventListener('selectstart', disableCopyPaste);
+    document.addEventListener('dragstart', disableCopyPaste);
+
+    let violationCount = 0;
+    let isSubmitting = false; // Flag to prevent violations during submit
+    const warningThreshold = 10; // Allow up to 10 violations before auto-submit.
+
+    function logViolation(action, details) {
+        if (isSubmitting) return; // IGNORE if submitting
+
+        violationCount++;
+        fetch("{% url 'log_violation' exam.id %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ action: action, details: details })
+        });
+
+        if (violationCount >= warningThreshold) {
+            alert("CRITICAL WARNING: Multiple security violations detected. Your exam will now be automatically submitted.");
+            document.getElementById('examForm').submit();
+        } else {
+            alert(`SECURITY WARNING: ${action} detected. This has been logged. (${violationCount}/${warningThreshold} warnings)`);
+        }
+    }
+
+    function enterFullScreen() {
+        const elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen().catch(err => {
+                console.log(`Error attempting to enable full-screen mode: ${err.message}`);
+            });
+        }
+    }
+
+    document.addEventListener('click', function startExam() {
+        if (!document.fullscreenElement) {
+            enterFullScreen();
+        }
+    }, { once: false });
+
+    document.addEventListener("fullscreenchange", function () {
+        if (!document.fullscreenElement) {
+            logViolation("Exit Full-screen", "Student exited full-screen mode (possibly ESC key).");
+        }
+    });
+
+    document.addEventListener("visibilitychange", function () {
+        if (document.hidden) {
+            logViolation("Tab Switch", "Student switched tabs or minimized the browser.");
+        }
+    });
+
+    // ADVANCED ANTI-CHEAT: OVERLAY DETECTION
+    // Triggers if ANY other window, overlay, or app steals focus from the exam
+    window.addEventListener("blur", function () {
+        logViolation("Focus Lost (Overlay)", "Student clicked outside the exam window or opened an overlay app.");
+    });
+
+
+    // ADVANCED ANTI-CHEAT: KEYBOARD SHORTCUT BLOCKER
+    // Blocks Developer Tools (F12), PrintScreen, and common Ctrl/Cmd shortcuts
+    document.addEventListener('keydown', function (e) {
+        // Prevent F12
+        if (e.key === 'F12') {
+            e.preventDefault();
+            logViolation("Developer Tools Attempt", "Student attempted to open F12 Dev Tools.");
+            return false;
+        }
+        // Prevent Ctrl+Shift+I / Ctrl+Shift+J / Ctrl+U
+        if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+            e.preventDefault();
+            logViolation("Developer Tools Attempt", "Student attempted to use Ctrl+Shift shortcuts.");
+            return false;
+        }
+        if (e.ctrlKey && (e.key === 'U' || e.key === 'u')) {
+            e.preventDefault();
+            logViolation("View Source Attempt", "Student attempted to view page source.");
+            return false;
+        }
+        // Prevent PrintScreen
+        if (e.key === 'PrintScreen') {
+            e.preventDefault();
+            logViolation("Screenshot Attempt", "Student attempted to take a screenshot.");
+            return false;
+        }
+    });
+
+    // REAL-TIME STATUS CHECK (Every 10 seconds)
+    // Reflects admin actions (Force Submit, Time Extension, Forced Logout)
+    function checkStatus() {
+        if (isSubmitting) return;
+
+        fetch("{% url 'check_status' exam.id %}")
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    // Admin logged the student out or session expired
+                    window.location.href = "{% url 'login' %}?next=" + window.location.pathname;
+                    return;
+                }
+                if (!response.ok) throw new Error('Status check failed');
+                return response.json();
+            })
+            .then(data => {
+                if (!data) return;
+
+                if (data.status === 'submitted') {
+                    alert(data.message || "Your exam has been submitted by an administrator.");
+                    window.location.href = data.redirect || "{% url 'student_dashboard' %}";
+                } else if (data.status === 'in_progress') {
+                    // Sync timer if it drifts or if admin changes duration
+                    const serverRemaining = parseInt(data.remaining_seconds);
+                    if (Math.abs(duration - serverRemaining) > 5) {
+                        console.log("Syncing timer with server: " + serverRemaining + "s");
+                        duration = serverRemaining;
+                        updateTimer();
+                    }
+                }
+            })
+            .catch(err => {
+                console.log("Status check error:", err);
+            });
+    }
+
+    setInterval(checkStatus, 5000); // Check every 5 seconds
+    checkStatus(); // Initial check
+
+</script>
+{% endblock %}

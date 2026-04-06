@@ -1,0 +1,170 @@
+[
+  {
+    "id": 625,
+    "old": "javac (Compiler) (standard implementation)",
+    "new": "javac (Compiler)",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 759,
+    "old": "0 (standard implementation)",
+    "new": "0",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 762,
+    "old": "Explicit Casting (Narrowing) (standard implementation)",
+    "new": "Explicit Casting (Narrowing)",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 782,
+    "old": "HashSet stores elements randomly based on hash codes; TreeSet stores elements in a sorted order. (standard implementation)",
+    "new": "HashSet stores elements randomly based on hash codes; TreeSet stores elements in a sorted order.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 795,
+    "old": "The current value of the most precise available system timer in nanoseconds, useful for measuring elapsed time. (standard implementation)",
+    "new": "The current value of the most precise available system timer in nanoseconds, useful for measuring elapsed time.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 798,
+    "old": "To control access to a particular resource by multiple threads. (standard implementation)",
+    "new": "To control access to a particular resource by multiple threads.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 822,
+    "old": "It writes an OS-independent line separator (newline) to the file. (standard implementation)",
+    "new": "It writes an OS-independent line separator (newline) to the file.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 834,
+    "old": "Unchecked (Runtime) Exception (standard implementation)",
+    "new": "Unchecked (Runtime) Exception",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 838,
+    "old": ".collect(Collectors.toList()) (standard implementation)",
+    "new": ".collect(Collectors.toList())",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 850,
+    "old": "parseDouble converts a text string into a decimal number (double), while parseInt converts a text string into a whole number (int). (standard implementation)",
+    "new": "parseDouble converts a text string into a decimal number (double), while parseInt converts a text string into a whole number (int).",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 858,
+    "old": "To manage a pool of threads and schedule tasks for execution. (standard implementation)",
+    "new": "To manage a pool of threads and schedule tasks for execution.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 867,
+    "old": "It replaces every element in the array with the value 0. (standard implementation)",
+    "new": "It replaces every element in the array with the value 0.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 894,
+    "old": "Holds the program counter for each individual thread. (standard implementation)",
+    "new": "Holds the program counter for each individual thread.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 898,
+    "old": "To convert frequently executed bytecode to optimized native machine code at runtime for faster execution. (standard implementation)",
+    "new": "To convert frequently executed bytecode to optimized native machine code at runtime for faster execution.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 906,
+    "old": "They are approximate and can lose precision with fractional numbers. (standard implementation)",
+    "new": "They are approximate and can lose precision with fractional numbers.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 923,
+    "old": "nextLine() gets skipped because it reads the leftover newline character ( (standard implementation)",
+    "new": "nextLine() gets skipped because it reads the leftover newline character (",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 942,
+    "old": "It reverses the character sequence in-place within the mutable StringBuilder object. (standard implementation)",
+    "new": "It reverses the character sequence in-place within the mutable StringBuilder object.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 959,
+    "old": "ReentrantLock (Lock interface) (standard implementation)",
+    "new": "ReentrantLock (Lock interface)",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 968,
+    "old": ".max() or .reduce() (standard implementation)",
+    "new": ".max() or .reduce()",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 970,
+    "old": "@FunctionalInterface (standard implementation)",
+    "new": "@FunctionalInterface",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 983,
+    "old": "Only inside the for loop block. (standard implementation)",
+    "new": "Only inside the for loop block.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 1003,
+    "old": "Yes, unless the class itself is declared as abstract. (standard implementation)",
+    "new": "Yes, unless the class itself is declared as abstract.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 1043,
+    "old": "No, private members are never accessible to subclasses. (standard implementation)",
+    "new": "No, private members are never accessible to subclasses.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 1115,
+    "old": "The output is unpredictable (could be either A or B). (standard implementation)",
+    "new": "The output is unpredictable (could be either A or B).",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 1126,
+    "old": "Done (standard implementation)",
+    "new": "Done",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 1131,
+    "old": "3 (standard implementation)",
+    "new": "3",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 1138,
+    "old": "It stores class information, method bytecode, and the constant pool. (standard implementation)",
+    "new": "It stores class information, method bytecode, and the constant pool.",
+    "pattern": " (standard implementation)"
+  },
+  {
+    "id": 1170,
+    "old": "\"abc\" is an interned literal stored in the String pool to optimize memory. (standard implementation)",
+    "new": "\"abc\" is an interned literal stored in the String pool to optimize memory.",
+    "pattern": " (standard implementation)"
+  }
+]

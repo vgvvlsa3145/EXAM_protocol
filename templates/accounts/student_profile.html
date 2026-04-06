@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}My Profile: {{ student.get_full_name|default:student.username }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary mb-3">
+            <i class="bi bi-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <!-- Profile Card -->
+    <div class="col-md-5">
+        <div class="card shadow-lg mb-4 hover-lift">
+            <div class="card-header bg-gradient bg-primary text-white text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-person-circle display-1"></i>
+                </div>
+                <h2 class="mb-0 fw-bold">{{ student.get_full_name|default:student.username|upper }}</h2>
+                <p class="mb-0 opacity-75">{{ student.username }}</p>
+                <div class="mt-2">
+                    <span class="badge bg-light text-primary rounded-pill px-3">STUDENT</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <span class="text-muted"><i class="bi bi-card-heading me-2"></i>Roll Number</span>
+                        <span class="fw-bold">{{ profile.roll_number|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <span class="text-muted"><i class="bi bi-building me-2"></i>Department</span>
+                        <span class="fw-bold">{{ profile.department|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <span class="text-muted"><i class="bi bi-buildings me-2"></i>College</span>
+                        <span class="fw-bold">{{ profile.college_name|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <span class="text-muted"><i class="bi bi-calendar-event me-2"></i>Year</span>
+                        <span class="fw-bold">{{ profile.year|default:"N/A" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <span class="text-muted"><i class="bi bi-clock-history me-2"></i>Last Active</span>
+                        <span class="text-primary small">{{ student.last_login|timesince }} ago</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats / History -->
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-bottom py-3">
+                <h5 class="mb-0 text-primary"><i class="bi bi-trophy me-2"></i>My Exam History</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Exam Title</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th class="text-end">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for attempt in attempts %}
+                            <tr>
+                                <td class="fw-bold">{{ attempt.exam.title }}</td>
+                                <td class="text-muted small">{{ attempt.start_time|date:"M d, Y" }}</td>
+                                <td>
+                                    {% if attempt.status == 'SUBMITTED' %}
+                                    <span
+                                        class="badge bg-success-subtle text-success border border-success-subtle rounded-pill">Completed</span>
+                                    {% else %}
+                                    <span
+                                        class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill">In
+                                        Progress</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if attempt.exam.results_published and attempt.status == 'SUBMITTED' %}
+                                    <span class="fw-bold text-primary">{{ attempt.score }}</span> <span
+                                        class="text-muted small">/ {{ attempt.exam.total_marks }}</span>
+                                    <a href="{% url 'view_result' attempt.id %}" class="btn btn-sm btn-link p-0 ms-2"><i
+                                            class="bi bi-eye"></i></a>
+                                    {% else %}
+                                    <span class="text-muted small fst-italic">Pending</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-5 text-muted">
+                                    <i class="bi bi-journal-x display-4 d-block mb-3 opacity-25"></i>
+                                    No exams attempted yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
