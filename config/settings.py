@@ -79,13 +79,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL', f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+NEON_URL = "postgresql://neondb_owner:npg_AUJ2NOXLj6eE@ep-sweet-grass-a1m3zeto.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+
+if not os.environ.get('DATABASE_URL') and not os.environ.get('RENDER'):
+    # Standard SQLite configuration for local development only
+    sqlite_path = str(BASE_DIR / 'db.sqlite3').replace('\\', '/')
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    # Use Neon URL if DATABASE_URL is missing but we're on Render, or use the env var
+    db_url = os.environ.get('DATABASE_URL', NEON_URL)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=db_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
 
 # User Model
 AUTH_USER_MODEL = 'accounts.User'
